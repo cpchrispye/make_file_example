@@ -1,57 +1,80 @@
 MAKEFILE_PATH := $(lastword $(MAKEFILE_LIST))
 ROOT_DIR := $(dir $(abspath $(MAKEFILE_PATH)))
 
-
-CXX ?= g++
-CXXFLAGS ?= -Wall -Wextra -std=c++11 -O2 -MMD -MP
 # Project configuration
-PROJECT_NAME = cpp_make_demo
-BUILD_DIR = $(ROOT_DIR)/build
+BUILD_ROOT_DIR = $(ROOT_DIR)/build/x64
+BUILD_ROOT_OBJ_DIR = $(BUILD_ROOT_DIR)/obj
+BUILD_ROOT_BIN_DIR = $(BUILD_ROOT_DIR)/bin
+BUILD_ROOT_LIB_DIR = $(BUILD_ROOT_DIR)/lib
 
-# OBJ_DIR = $(BUILD_DIR)/app
-# BIN_DIR = $(BUILD_DIR)/bin
-# LIB_DIR = $(BUILD_DIR)/lib
+# Get current directory relative to ROOT_DIR
+CURRENT_DIR := $(patsubst $(ROOT_DIR)%,%,$(CURDIR))
+BUILD_DIR := $(BUILD_ROOT_OBJ_DIR)/$(CURRENT_DIR)
 
+# Build objects in mirrored directory structure
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all
-.DEFAULT_GOAL := all
-
-$(BUILD_DIR):
-	@echo "Creating build directory structure..."
-	mkdir -p $(BUILD_DIR)
-
+CXX ?= g++
+CXXFLAGS ?= -Wall -Wextra -std=c++11 -O2 -MMD -MP
+LDFLAGS = -L$(BUILD_ROOT_LIB_DIR)
 
 ifdef TARGET
 all: $(BUILD_DIR)/$(TARGET)
+
+$(BUILD_DIR)/$(TARGET): $(OBJS)
+	@echo "Linking Target: $@"
+	@mkdir -p $(dir $@)
+	@mkdir -p $(BUILD_ROOT_BIN_DIR)	
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) $(LDLIBS) -o $@
+	@cp $@ $(BUILD_ROOT_BIN_DIR)/
 endif
 
-ifdef LIB
-all: $(BUILD_DIR)/$(LIB)
+ifdef TARGET_LIB
+all: $(BUILD_DIR)/$(TARGET_LIB)
 endif
 
-$(BUILD_DIR)/$(TARGET): $(OBJS) | $(BUILD_DIR)
 
-	@echo "Compiling Target: $<"
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/$(LIB): $(OBJS) | $(BUILD_DIR)
-	@echo "Archiving : $@"
-	ar rcs $@ $^
-	@echo "Archiving created successfully!"
+# Update the archive rule to use full path
+$(BUILD_DIR)/$(TARGET_LIB): $(OBJS)
+	@mkdir -p $(dir $@)
+	@mkdir -p $(BUILD_ROOT_LIB_DIR)
+	@echo "Archiving: $@"
+	@ar rcs $@ $^
+	@cp $@ $(BUILD_ROOT_LIB_DIR)/
+# 	@echo "Library created successfully!"
 
 # Compile source files to object files
-$(BUILD_DIR)/%.cpp.o: %.cpp | $(BUILD_DIR)
+$(BUILD_DIR)/%.cpp.o: $(CURDIR)/%.cpp
+	@mkdir -p $(dir $@)
 	@echo "Compiling: $<"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.c.o: %.cpp | $(BUILD_DIR)
+# Compile source files to object files
+$(BUILD_DIR)/%.c.o: $(CURDIR)/%.c
+	@mkdir -p $(dir $@)
 	@echo "Compiling: $<"
-	$(GCC) $(CXXFLAGS) -c $< -o $@
+	@$(GCC) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	@echo "Cleaning build directory..."
 	rm -rf $(BUILD_DIR)
+
+
+.PHONY: all
+.DEFAULT_GOAL := all
+
+debug:
+	@echo "OBJS = $(OBJS)."
+	@echo "TARGET_LIB = $(TARGET_LIB)."
+	@echo "TARGET_LIBF = $(BUILD_DIR)/$(TARGET_LIB)."
+	@echo "ROOT_DIR = $(ROOT_DIR)."
+	@echo "BUILD_DIR = $(BUILD_DIR)."
+	@echo "CURRENT_DIR = $(CURRENT_DIR)."
+	@echo "SRCS = $(SRCS)."
+	@echo "BUILD_ROOT_DIR = $(BUILD_ROOT_DIR)."
+	@echo "BUILD_ROOT_OBJ_DIR = $(BUILD_ROOT_OBJ_DIR)."
+	@echo "BUILD_ROOT_BIN_DIR = $(BUILD_ROOT_BIN_DIR)."
+	@echo "BUILD_ROOT_LIB_DIR = $(BUILD_ROOT_LIB_DIR)."
 
 -include $(DEPS)

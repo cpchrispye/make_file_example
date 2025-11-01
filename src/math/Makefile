@@ -1,10 +1,6 @@
-
-
-LIBRARY_NAME = math
-
 # Source files (automatically find all .cpp files)
 SRCS = math_operations.cpp
 # Target library
-LIB = math.a
+TARGET_LIB = libmathop.a
 
-include ../../Include.mk
+include $(PROJECT_ROOT)/Include.mk
